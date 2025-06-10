@@ -1203,9 +1203,7 @@ public abstract class AbstractStargateEntity extends EnergyBlockEntity implement
 		CompoundTag tag = new CompoundTag();
 		BlockItem.setBlockEntityData(stack, this.getType(), this.serializeStargateInfo(tag));
 	}
-	
-	
-	
+
     public void updateBasicInterfaceBlocks(@Nullable String eventName, Object... objects)
     {
     	BlockPos gatePos = this.getBlockPos();
@@ -1473,6 +1471,11 @@ public abstract class AbstractStargateEntity extends EnergyBlockEntity implement
 	public float checkConnectionShieldingState()
 	{
 		return StargateNetwork.get(level).checkStargateShieldingState(this, connectionID);
+	}
+
+	@Override
+	public BlockPos getPosition(){
+		return this.getBlockPos();
 	}
 	
 	//============================================================================================

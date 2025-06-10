@@ -11,7 +11,7 @@ import net.povstalec.sgjourney.common.block_entities.TransceiverEntity;
 public class TransceiverPeripheralWrapper
 {
 	private TransceiverEntity transceiver;
-	private TransceiverPeripheral transceiverPeripheral;
+	private TransceiverBlockPeripheral transceiverBlockPeripheral;
 	private LazyOptional<IPeripheral> peripheral;
     protected final List<IComputerAccess> computerList = new LinkedList<>();
 	
@@ -20,27 +20,27 @@ public class TransceiverPeripheralWrapper
 		this.transceiver = transceiver;
 	}
 	
-	public static TransceiverPeripheral createPeripheral(TransceiverEntity transceiver)
+	public static TransceiverBlockPeripheral createPeripheral(TransceiverEntity transceiver)
 	{
-		return new TransceiverPeripheral(transceiver);
+		return new TransceiverBlockPeripheral(transceiver);
 	}
 	
 	public LazyOptional<IPeripheral> newPeripheral()
 	{
-		transceiverPeripheral = createPeripheral(transceiver);
-		peripheral = LazyOptional.of(() -> transceiverPeripheral);
+		transceiverBlockPeripheral = createPeripheral(transceiver);
+		peripheral = LazyOptional.of(() -> transceiverBlockPeripheral);
 		
 		return peripheral;
 	}
 	
 	public void queueEvent(String eventName, Object... objects)
 	{
-		if(transceiverPeripheral != null)
-			transceiverPeripheral.queueEvent(eventName, objects);
+		if(transceiverBlockPeripheral != null)
+			transceiverBlockPeripheral.queueEvent(eventName, objects);
 	}
 	
-	public TransceiverPeripheral getPeripheral()
+	public TransceiverBlockPeripheral getPeripheral()
 	{
-		return this.transceiverPeripheral;
+		return this.transceiverBlockPeripheral;
 	}
 }

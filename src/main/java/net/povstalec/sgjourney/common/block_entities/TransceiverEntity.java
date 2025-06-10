@@ -1,12 +1,17 @@
 package net.povstalec.sgjourney.common.block_entities;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 
+import com.google.common.collect.Sets;
 import net.povstalec.sgjourney.common.block_entities.stargate.AbstractStargateEntity;
+import net.povstalec.sgjourney.common.compatibility.cctweaked.TransceiverNetwork;
+import net.povstalec.sgjourney.common.sgjourney.IPortableTransmissionSender;
+import net.povstalec.sgjourney.common.sgjourney.ITransciever;
 import org.jetbrains.annotations.NotNull;
 
 import net.minecraft.core.BlockPos;
@@ -24,13 +29,12 @@ import net.povstalec.sgjourney.StargateJourney;
 import net.povstalec.sgjourney.common.blocks.TransceiverBlock;
 import net.povstalec.sgjourney.common.capabilities.CCTweakedCapabilities;
 import net.povstalec.sgjourney.common.compatibility.cctweaked.peripherals.TransceiverPeripheralWrapper;
-import net.povstalec.sgjourney.common.config.CommonTransmissionConfig;
 import net.povstalec.sgjourney.common.init.BlockEntityInit;
 import net.povstalec.sgjourney.common.init.PacketHandlerInit;
 import net.povstalec.sgjourney.common.packets.ClientboundTransceiverUpdatePacket;
 import net.povstalec.sgjourney.common.sgjourney.ITransmissionReceiver;
 
-public class TransceiverEntity extends BlockEntity implements ITransmissionReceiver
+public class TransceiverEntity extends BlockEntity implements ITransmissionReceiver, ITransciever
 {
 	public static final String IDC = "idc";
 	public static final String FREQUENCY = "frequency";
@@ -81,18 +85,8 @@ public class TransceiverEntity extends BlockEntity implements ITransmissionRecei
 		tag.putInt(FREQUENCY, frequency);
 		tag.putString(IDC, idc);
 	}
-	
-	public float transmissionRadius()
-	{
-		return CommonTransmissionConfig.max_transceiver_transmission_distance.get();
-	}
-	
-	public float transmissionRadius2()
-	{
-		return transmissionRadius() * transmissionRadius();
-	}
-	
-	public void setFrequency(int frequency)
+
+    public void setFrequency(int frequency)
 	{
 		this.frequency = frequency;
 		this.setChanged();
@@ -123,8 +117,12 @@ public class TransceiverEntity extends BlockEntity implements ITransmissionRecei
 	{
 		return idc;
 	}
-    
-    public void toggleFrequency()
+
+	public BlockPos getPosition() {
+		return this.getBlockPos();
+	}
+
+	public void toggleFrequency()
     {
     	editingFrequency = !editingFrequency;
 		this.setChanged();
@@ -147,27 +145,13 @@ public class TransceiverEntity extends BlockEntity implements ITransmissionRecei
 		if(state.getBlock() instanceof TransceiverBlock transceiver)
 			transceiver.receiveTransmission(state, level, pos, codeIsCorrect);
 	}
-	
+
+	@Override
 	public void sendTransmission()
 	{
-		int roundedRadius = (int) Math.ceil(transmissionRadius() / 16);
-		
-		for(int x = -roundedRadius; x <= roundedRadius; x++)
-		{
-			for(int z = -roundedRadius; z <= roundedRadius; z++)
-			{
-				ChunkAccess chunk = level.getChunk(getBlockPos().east(16 * x).south(16 * z));
-				Set<BlockPos> positions = chunk.getBlockEntitiesPos();
-				
-				positions.stream().forEach(pos ->
-				{
-					BlockEntity blockEntity = level.getBlockEntity(pos);
-					
-					if(blockEntity instanceof ITransmissionReceiver receiver && blockEntity != this)
-						receiver.receiveTransmission(0, getFrequency(), getCurrentCode());
-				});
-			}
-		}
+		Set<ITransmissionReceiver> receivers = getBlockEntitiesOfType(ITransmissionReceiver.class);
+		receivers.remove(this);
+		TransceiverNetwork.tryTransmit(receivers, this);
 		
 		Level level = getLevel();
 		BlockPos pos = getBlockPos();
@@ -180,24 +164,7 @@ public class TransceiverEntity extends BlockEntity implements ITransmissionRecei
 	public int checkShieldingState()
 	{
 		int roundedRadius = (int) Math.ceil(transmissionRadius() / 16);
-		List<AbstractStargateEntity> stargates = new ArrayList<AbstractStargateEntity>();
-		
-		for(int x = -roundedRadius; x <= roundedRadius; x++)
-		{
-			for(int z = -roundedRadius; z <= roundedRadius; z++)
-			{
-				ChunkAccess chunk = level.getChunk(getBlockPos().east(16 * x).south(16 * z));
-				Set<BlockPos> positions = chunk.getBlockEntitiesPos();
-				
-				positions.stream().forEach(pos ->
-				{
-					if(level.getBlockEntity(pos) instanceof AbstractStargateEntity stargate && distance2(getBlockPos(), stargate.getBlockPos()) <= transmissionRadius2())
-					{
-						stargates.add(stargate);
-					}
-				});
-			}
-		}
+		List<AbstractStargateEntity> stargates = getBlockEntitiesOfType(AbstractStargateEntity.class).stream().toList();
 
 		if(stargates.size() == 0)
 			return -1; // No Stargates nearby
@@ -263,32 +230,29 @@ public class TransceiverEntity extends BlockEntity implements ITransmissionRecei
 		PacketHandlerInit.INSTANCE.send(PacketDistributor.TRACKING_CHUNK.with(() -> level.getChunkAt(this.worldPosition)), new ClientboundTransceiverUpdatePacket(this.worldPosition, this.editingFrequency, this.frequency, this.idc));
 	}
 	
-	private static double distance2(BlockPos pos, BlockPos targetPos)
-	{
-		int x = Math.abs(targetPos.getX() - pos.getX());
-		int y = Math.abs(targetPos.getY() - pos.getY());
-		int z = Math.abs(targetPos.getZ() - pos.getZ());
-		
-		return x*x + y*y + z*z;
-	}
-	
 	//============================================================================================
 	//*****************************************CC: Tweaked****************************************
 	//============================================================================================
 	
 	public TransceiverPeripheralWrapper getPeripheralWrapper()
 	{
+		// Todo: @Wold review this
+		// I dont see a point in this atm.
+		// peripheralWrapper will always be null if CC:Tweaked is not loaded.
 		if(!ModList.get().isLoaded(StargateJourney.COMPUTERCRAFT_MODID))
 			return null;
 		
 		return this.peripheralWrapper;
 	}
-	
+
 	public void queueEvent(String eventName, Object... objects)
 	{
+		// Todo: @Wold review this
+		// I dont see a point in this atm.
+		// peripheralWrapper will always be null if CC:Tweaked is not loaded.
 		if(!ModList.get().isLoaded(StargateJourney.COMPUTERCRAFT_MODID))
 			return;
-		
+
 		if(this.peripheralWrapper != null)
 			this.peripheralWrapper.queueEvent(eventName, objects);
 	}
@@ -334,4 +298,5 @@ public class TransceiverEntity extends BlockEntity implements ITransmissionRecei
 		
 		transceiver.updateClient();
     }
+
 }

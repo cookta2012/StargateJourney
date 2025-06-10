@@ -1,6 +1,6 @@
 package net.povstalec.sgjourney.common.sgjourney;
 
-public interface ITransmissionReceiver
+public interface ITransmissionReceiver extends ITranscieverLocation
 {
-	public void receiveTransmission(int transmissionJump, int frequency, String transmission);
+	void receiveTransmission(int transmissionJump, int frequency, String transmission);
 }

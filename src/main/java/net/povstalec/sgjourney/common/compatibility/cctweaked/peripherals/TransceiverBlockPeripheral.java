@@ -18,12 +18,12 @@ import net.povstalec.sgjourney.common.compatibility.cctweaked.methods.Transceive
 import net.povstalec.sgjourney.common.compatibility.cctweaked.methods.TransceiverMethods;
 import net.povstalec.sgjourney.common.compatibility.computer_functions.TransceiverFunctions;
 
-public class TransceiverPeripheral implements IPeripheral, IDynamicPeripheral
+public class TransceiverBlockPeripheral implements IPeripheral, IDynamicPeripheral
 {
 	protected TransceiverEntity transceiverEntity;
 	protected HashMap<String, TransceiverMethod> methods = new HashMap<String, TransceiverMethod>();
 	
-	public TransceiverPeripheral(TransceiverEntity interfaceEntity)
+	public TransceiverBlockPeripheral(TransceiverEntity interfaceEntity)
 	{
 		this.transceiverEntity = interfaceEntity;
 		
@@ -45,7 +45,7 @@ public class TransceiverPeripheral implements IPeripheral, IDynamicPeripheral
 		if(this == other)
 			return true;
 		
-		return this.getClass() == other.getClass() && this.transceiverEntity == ((TransceiverPeripheral) other).transceiverEntity;
+		return this.getClass() == other.getClass() && this.transceiverEntity == ((TransceiverBlockPeripheral) other).transceiverEntity;
 	}
 
     @Override
@@ -74,8 +74,9 @@ public class TransceiverPeripheral implements IPeripheral, IDynamicPeripheral
 		
 		return methods.get(methodName).use(computer, context, this.transceiverEntity, arguments);
 	}
-	
-	public <ConnectedBlockEntity extends BlockEntity> void registerMethod(TransceiverMethod function)
+
+	// old signature: public <ConnectedBlockEntity extends BlockEntity> void registerMethod(TransceiverMethod function, String name)
+	public void registerMethod(TransceiverMethod function)
 	{
 		methods.put(function.getName(), function);
 	}
@@ -111,6 +112,7 @@ public class TransceiverPeripheral implements IPeripheral, IDynamicPeripheral
 	{
 		return TransceiverFunctions.getFrequency(transceiverEntity);
 	}
+
 
 	@LuaFunction(mainThread = true)
 	public final String getCurrentCode() throws LuaException

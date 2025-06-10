@@ -110,6 +110,7 @@ public class StargateJourney
         RecipeTypeInit.register(eventBus);
         StatisticsInit.register(eventBus);
 		CommandInit.register(eventBus);
+        CompatablityInit.register(eventBus);
 
         GalaxyInit.register(eventBus);
         
